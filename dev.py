@@ -10,7 +10,7 @@ def run_frontend():
 
 def run_backend():
     os.chdir("backend")
-    return subprocess.Popen(["uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return subprocess.Popen(["uvicorn", "app:app", "--reload", "--host", "0.0.0.0", "--port", "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def stream_output(process, prefix):
     while True:
@@ -23,19 +23,19 @@ def stream_output(process, prefix):
 def main():
     frontend = run_frontend()
     backend = run_backend()
-    
+
     with ThreadPoolExecutor(max_workers=2) as executor:
         executor.submit(stream_output, frontend, "Frontend")
         executor.submit(stream_output, backend, "Backend")
-        
+
     def signal_handler(sig, frame):
         print("\nShutting down...")
         frontend.terminate()
         backend.terminate()
         sys.exit(0)
-        
+
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     frontend.wait()
     backend.wait()
 
