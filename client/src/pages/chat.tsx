@@ -44,9 +44,9 @@ export default function Chat() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="border-b bg-background p-4 flex justify-between items-center">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+    <div className="flex flex-col h-screen">
+      <header className="flex justify-between items-center p-4 border-b">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           Python & DSA Assistant
         </h1>
         <Button
@@ -54,20 +54,19 @@ export default function Chat() {
           size="icon"
           onClick={() => clearChat.mutate()}
           disabled={clearChat.isPending}
-          className="hover:bg-destructive/10 transition-colors"
         >
           <Trash2 className="h-5 w-5 text-destructive" />
         </Button>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="container mx-auto max-w-4xl p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-6">
           {isLoading ? (
-            <div className="flex justify-center items-center min-h-[200px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
           ) : messages?.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center text-muted-foreground">
               <p className="text-lg">Start a conversation by asking a Python or DSA question!</p>
               <p className="text-sm mt-2">Example: "Explain how to implement a binary search tree"</p>
             </div>
@@ -77,16 +76,16 @@ export default function Chat() {
             ))
           )}
         </div>
-      </main>
+      </div>
 
-      <footer className="border-t bg-background p-4">
-        <div className="container mx-auto max-w-4xl">
+      <div className="p-4 border-t bg-background">
+        <div className="max-w-4xl mx-auto">
           <ChatInput
             onSubmit={(content) => sendMessage.mutate(content)}
             isLoading={sendMessage.isPending}
           />
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
