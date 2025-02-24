@@ -4,12 +4,12 @@ import { ChatInput } from "@/components/chat/input";
 import { ChatMessage } from "@/components/chat/message";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Chat() {
   const { toast } = useToast();
-  
+
   const { data: messages, isLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
   });
