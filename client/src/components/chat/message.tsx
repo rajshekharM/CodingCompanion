@@ -10,6 +10,38 @@ interface ChatMessageProps {
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
 
+  // Function to format text with different styles for code and comments
+  const formatText = (text: string) => {
+    // Split text by code blocks marked with single backticks
+    return text.split(/(`[^`]+`)/).map((part, index) => {
+      if (part.startsWith('`') && part.endsWith('`')) {
+        // This is inline code
+        return (
+          <code key={index} className="px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm">
+            {part.slice(1, -1)}
+          </code>
+        );
+      } else {
+        // For regular text, handle comments starting with #
+        return part.split('\n').map((line, lineIndex) => {
+          if (line.trim().startsWith('#')) {
+            return (
+              <div key={`${index}-${lineIndex}`} className="text-muted-foreground italic font-sans">
+                {line}
+              </div>
+            );
+          }
+          return (
+            <span key={`${index}-${lineIndex}`} className="font-sans">
+              {line}
+              {lineIndex < part.split('\n').length - 1 && <br />}
+            </span>
+          );
+        });
+      }
+    });
+  };
+
   return (
     <div className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={`flex gap-4 max-w-[85%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
@@ -26,9 +58,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </div>
 
         <Card className={`p-5 space-y-4 shadow-md ${isUser ? 'bg-primary/5' : 'bg-card'}`}>
-          <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:bg-muted">
-            <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-              {message.content}
+          <div className="prose prose-sm max-w-none dark:prose-invert">
+            <div className="leading-relaxed text-foreground/90">
+              {formatText(message.content)}
             </div>
           </div>
 
