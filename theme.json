@@ -2,5 +2,20 @@
   "variant": "professional",
   "primary": "hsl(234 89% 74%)",
   "appearance": "dark",
-  "radius": 0.75
+  "radius": 0.5,
+  "colors": {
+    "background": "hsl(232 14% 13%)",
+    "foreground": "hsl(0 0% 98%)",
+    "card": "hsl(232 14% 15%)",
+    "card-foreground": "hsl(0 0% 98%)",
+    "popover": "hsl(232 14% 15%)",
+    "popover-foreground": "hsl(0 0% 98%)",
+    "border": "hsl(232 14% 31%)",
+    "input": "hsl(232 14% 31%)",
+    "accent": "hsl(206 100% 50%)",
+    "success": "hsl(145 65% 45%)",
+    "warning": "hsl(43 96% 58%)",
+    "error": "hsl(0 84% 60%)",
+    "code": "hsl(232 14% 18%)"
+  }
 }
