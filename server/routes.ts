@@ -17,13 +17,22 @@ export async function registerRoutes(app: Express) {
       const message = await storage.addMessage(messageData);
 
       if (messageData.role === "user") {
-        const aiResponse = await chat(messageData.content);
-        const aiMessage = await storage.addMessage({
-          role: "assistant",
-          content: aiResponse.content,
-          codeBlocks: aiResponse.codeBlocks,
-        });
-        res.json([message, aiMessage]);
+        try {
+          const aiResponse = await chat(messageData.content);
+          const aiMessage = await storage.addMessage({
+            role: "assistant",
+            content: aiResponse.content,
+            codeBlocks: aiResponse.codeBlocks,
+          });
+          res.json([message, aiMessage]);
+        } catch (error) {
+          // Store the user message but return an error for the AI response
+          console.error("AI Response Error:", error);
+          res.status(500).json({ 
+            error: "Failed to get AI response. Please try again later.",
+            messages: [message]
+          });
+        }
       } else {
         res.json([message]);
       }
@@ -31,7 +40,10 @@ export async function registerRoutes(app: Express) {
       if (error instanceof ZodError) {
         res.status(400).json({ error: error.errors });
       } else {
-        res.status(500).json({ error: "Internal server error" });
+        console.error("Server Error:", error);
+        res.status(500).json({ 
+          error: "An unexpected error occurred. Please try again later." 
+        });
       }
     }
   });
