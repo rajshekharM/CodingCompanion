@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Message } from "@shared/schema";
 import { ChatInput } from "@/components/chat/input";
 import { ChatMessage } from "@/components/chat/message";
+import { FileUpload } from "@/components/file-upload";
 import { Button } from "@/components/ui/button";
 import { Trash2, Code2, BrainCog } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -62,15 +63,18 @@ export default function Chat() {
             </p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => clearChat.mutate()}
-          disabled={clearChat.isPending}
-          className="hover:bg-zinc-800/50"
-        >
-          <Trash2 className="h-5 w-5 text-zinc-400 hover:text-destructive" />
-        </Button>
+        <div className="flex items-center gap-4">
+          <FileUpload />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => clearChat.mutate()}
+            disabled={clearChat.isPending}
+            className="hover:bg-zinc-800/50"
+          >
+            <Trash2 className="h-5 w-5 text-zinc-400 hover:text-destructive" />
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-8">
@@ -89,7 +93,7 @@ export default function Chat() {
                   Ready to Learn and Code!
                 </p>
                 <p className="text-sm text-zinc-400 mt-1 max-w-sm mx-auto">
-                  Ask me anything about Python, Machine Learning, Data Science, or Deep Learning.
+                  Upload PDFs for context-aware responses, or ask direct questions about Python, ML, Data Science, or Deep Learning.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto mt-6">

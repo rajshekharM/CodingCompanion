@@ -1,12 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 import os
-from huggingface_hub import InferenceClient
+from .huggingface import chat
 from .middleware.logging import RequestLogMiddleware
-import tiktoken
+from .document_processor import doc_processor
 import logging
 import json
 
@@ -33,13 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize tokenizer for counting tokens
-tokenizer = tiktoken.get_encoding("cl100k_base")
-
-def count_tokens(text: str) -> int:
-    return len(tokenizer.encode(text))
-
-# Models
 class MessageBase(BaseModel):
     role: str
     content: str
@@ -57,43 +50,29 @@ class MessageCreate(BaseModel):
     content: str
     code_blocks: List[str] = []
 
-
 # In-memory storage
 messages: List[Message] = []
 message_id_counter = 1
 
-# Initialize HuggingFace client
-client = InferenceClient(token=os.environ["HUGGINGFACE_API_KEY"])
-
-async def get_ai_response(user_message: str):
-    system_prompt = """You are a helpful coding assistant specializing in Python and Data Structures & Algorithms (DSA)."""
-    prompt = f"{system_prompt}\n\nUser: {user_message}\n\nAssistant:"
-
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
     try:
-        response = await client.text_generation(
-            prompt,
-            model="codellama/CodeLlama-34b-Instruct-hf",
-            max_new_tokens=1000,
-            temperature=0.7,
-            return_full_text=False
-        )
+        # Save file temporarily
+        file_path = f"temp_{file.filename}"
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
 
-        # Extract code blocks and content
-        text = response.generated_text
-        import re
-        code_blocks = []
-        code_pattern = r"```python([\s\S]*?)```"
-        matches = re.finditer(code_pattern, text)
-        content = text
+        # Process the document
+        chunks = doc_processor.process_pdf(file_path)
+        doc_processor.create_vector_store()
 
-        for match in matches:
-            code_blocks.append(match.group(1).strip())
-            content = content.replace(match.group(0), "")
+        # Clean up
+        os.remove(file_path)
 
-        content = content.replace("```", "").strip()
-
-        return {"content": content, "code_blocks": code_blocks}
+        return {"message": "Document processed successfully"}
     except Exception as e:
+        logger.error(f"Error processing document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/messages", response_model=List[Message])
@@ -102,10 +81,8 @@ async def get_messages():
 
 @app.post("/api/messages", response_model=List[Message])
 async def create_message(message: MessageCreate):
+    global message_id_counter
     try:
-        # Count input tokens
-        input_tokens = count_tokens(message.content)
-
         user_message = Message(
             id=message_id_counter,
             timestamp=datetime.utcnow(),
@@ -118,18 +95,16 @@ async def create_message(message: MessageCreate):
 
         if message.role == "user":
             try:
-                ai_response = await get_ai_response(message.content)
+                # Get relevant document chunks
+                relevant_chunks = doc_processor.get_relevant_chunks(message.content)
+                context = "\n".join(relevant_chunks) if relevant_chunks else ""
 
-                # Count output tokens
-                output_tokens = count_tokens(ai_response["content"])
+                # Add context to the prompt if available
+                prompt = message.content
+                if context:
+                    prompt = f"Using this context:\n{context}\n\nUser question: {message.content}"
 
-                # Log token usage
-                logger.info(json.dumps({
-                    "message_id": user_message.id,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "total_tokens": input_tokens + output_tokens
-                }))
+                ai_response = await chat(prompt)
 
                 ai_message = Message(
                     id=message_id_counter,
