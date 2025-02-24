@@ -17,7 +17,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     mutationFn: async () => {
       return apiRequest("POST", "/api/messages", {
         role: "user",
-        content: "Please provide more details about your previous response",
+        content: "Please explain the previous answer in more detail",
         codeBlocks: [],
       });
     },
@@ -26,52 +26,43 @@ export function ChatMessage({ message }: ChatMessageProps) {
     },
   });
 
-  // Simpler text formatting that doesn't try to parse JSON
+  // Format text with syntax highlighting
   const formatText = (text: string) => {
-    const lines = text.split('\n');
+    const parts = text.split(/(`[^`]+`)/);
 
-    return (
-      <div className="space-y-2">
-        {lines.map((line, lineIndex) => {
-          // Handle inline code
-          const parts = line.split(/(`[^`]+`)/);
+    return parts.map((part, index) => {
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code key={index} className="px-1.5 py-0.5 rounded-md bg-zinc-800 font-mono text-sm text-emerald-300">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+
+      // Basic text with keyword highlighting
+      const formattedText = part
+        .split('\n')
+        .map((line, i) => {
+          const highlighted = line
+            .replace(/(import|from|def|class|return|if|else|for|while)\b/g, 
+              '<span class="text-violet-400">$1</span>')
+            .replace(/(".*?"|'.*?')/g, 
+              '<span class="text-amber-300">$1</span>')
+            .replace(/\b(\d+)\b/g, 
+              '<span class="text-cyan-300">$1</span>');
 
           return (
-            <div key={lineIndex} className="leading-relaxed">
-              {parts.map((part, partIndex) => {
-                if (part.startsWith('`') && part.endsWith('`')) {
-                  return (
-                    <code key={partIndex} className="px-1.5 py-0.5 rounded-md bg-zinc-800 font-mono text-sm text-emerald-300">
-                      {part.slice(1, -1)}
-                    </code>
-                  );
-                }
-
-                // Basic text formatting
-                const formattedText = part
-                  .replace(/(import|from|def|class|return|if|else|for|while)\b/g, 
-                    '<span class="text-violet-400">$1</span>')
-                  .replace(/(".*?"|'.*?')/g, 
-                    '<span class="text-amber-300">$1</span>')
-                  .replace(/\b(\d+)\b/g, 
-                    '<span class="text-cyan-300">$1</span>');
-
-                return (
-                  <span
-                    key={partIndex}
-                    className="text-zinc-200"
-                    dangerouslySetInnerHTML={{ __html: formattedText }}
-                  />
-                );
-              })}
-            </div>
+            <span key={i} className="block">
+              <span dangerouslySetInnerHTML={{ __html: highlighted }} />
+            </span>
           );
-        })}
-      </div>
-    );
+        });
+
+      return <span key={index}>{formattedText}</span>;
+    });
   };
 
-  const showMoreButton = !isUser && message.content.includes("more details if you'd like");
+  const showMoreButton = !isUser && message.content.includes("I can provide more");
 
   return (
     <div className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -96,7 +87,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               : 'bg-zinc-800/30 border-zinc-800/50 hover:border-violet-500/50'
             }`}
         >
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="prose prose-sm max-w-none prose-invert space-y-2">
             {formatText(message.content)}
           </div>
 
