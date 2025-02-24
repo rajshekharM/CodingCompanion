@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
 import { insertMessageSchema } from "@shared/schema";
-import { chat } from "./lib/openai";
+import { chat } from "./lib/huggingface";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express) {
