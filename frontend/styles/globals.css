@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-white font-sans antialiased;
+  }
+
+  code {
+    @apply font-mono text-sm bg-background-alt px-1.5 py-0.5 rounded-md text-success;
+  }
+
+  .message-card {
+    @apply backdrop-blur-sm bg-background-alt/50 border border-primary/10 rounded-lg shadow-lg;
+  }
+
+  .code-block {
+    @apply bg-background-alt rounded-md p-4 font-mono text-sm overflow-x-auto;
+  }
+
+  .code-block pre {
+    @apply m-0;
+  }
+
+  .floating-card {
+    @apply hover:shadow-xl transition-all duration-300 hover:-translate-y-1;
+  }
+}
