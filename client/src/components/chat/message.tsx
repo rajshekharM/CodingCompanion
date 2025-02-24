@@ -33,7 +33,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     return parts.map((part, index) => {
       if (part.startsWith('`') && part.endsWith('`')) {
         return (
-          <code key={index} className="px-1.5 py-0.5 rounded-md bg-zinc-800 font-mono text-sm text-emerald-300">
+          <code key={index} className="px-1.5 py-0.5 rounded-md bg-zinc-800/80 font-mono text-sm text-emerald-300 transition-colors">
             {part.slice(1, -1)}
           </code>
         );
@@ -52,8 +52,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
               '<span class="text-cyan-300">$1</span>');
 
           return (
-            <span key={i} className="block">
-              <span dangerouslySetInnerHTML={{ __html: highlighted }} />
+            <span key={i} className="block leading-7 tracking-wide">
+              <span 
+                className="font-[450] antialiased"
+                dangerouslySetInnerHTML={{ __html: highlighted }} 
+              />
             </span>
           );
         });
@@ -81,14 +84,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
         <Card 
           className={`group relative p-5 space-y-4 shadow-lg backdrop-blur-sm 
-            transition-all duration-300 hover:shadow-xl hover:bg-opacity-100
+            transition-all duration-300 hover:shadow-xl
             ${isUser 
               ? 'bg-zinc-800/50 border-zinc-700/50 hover:border-primary/50' 
               : 'bg-zinc-800/30 border-zinc-800/50 hover:border-violet-500/50'
             }`}
         >
-          <div className="prose prose-sm max-w-none prose-invert space-y-2">
-            {formatText(message.content)}
+          <div className="prose prose-sm max-w-none prose-invert">
+            <div className="space-y-3 font-sans text-[15px]">
+              {formatText(message.content)}
+            </div>
           </div>
 
           {message.codeBlocks && message.codeBlocks.length > 0 && (
@@ -103,7 +108,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="mt-4 w-full justify-center hover:bg-violet-500/10 text-violet-400"
+              className="mt-4 w-full justify-center hover:bg-violet-500/10 text-violet-400 transition-colors"
               onClick={() => getDetails.mutate()}
               disabled={getDetails.isPending}
             >
