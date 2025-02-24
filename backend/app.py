@@ -165,13 +165,19 @@ Relevant Sections:
 Question: {message.content}
 
 Instructions:
-1. Use the most relevant sections above to form your answer
-2. Cite specific information from the sections when possible
-3. If the sections aren't relevant enough, say so and provide a general answer instead
+1. If the sections contain a direct answer to the question, ONLY use that information - do not add any additional details.
+2. Start your response with "Based on the provided documents: " if using the context.
+3. If the sections don't contain a direct answer, say "The provided documents don't contain a direct answer to this question."
+4. DO NOT combine context information with general knowledge.
+5. Keep your response focused and concise.
 """
                 else:
                     logger.info("No sufficiently relevant chunks found, using general prompt")
-                    prompt = message.content
+                    prompt = f"""Answer the following question. Keep your response focused and concise.
+
+Question: {message.content}
+
+Note: No relevant context was found in the uploaded documents for this question."""
 
                 ai_response = await chat(prompt)
                 ai_message = Message(
