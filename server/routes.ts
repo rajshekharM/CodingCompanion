@@ -5,25 +5,21 @@ import { insertMessageSchema } from "@shared/schema";
 import { chat } from "./lib/huggingface";
 import { ZodError } from "zod";
 
-function truncateResponse(content: string): { content: string, hasMore: boolean } {
-  const maxLength = 250; // About 2-3 sentences
+function truncateResponse(text: string): { content: string, hasMore: boolean } {
+  const maxLength = 250;
   const sentenceEnd = /[.!?]\s+/g;
 
-  if (content.length <= maxLength) {
-    return { content, hasMore: false };
+  if (text.length <= maxLength) {
+    return { content: text, hasMore: false };
   }
 
-  // Find the last complete sentence within maxLength
-  const matches = [...content.matchAll(sentenceEnd)];
-  const lastSentenceEnd = matches.reduce((last, match) => {
-    if (match.index && match.index <= maxLength) {
-      return match.index + 1;
-    }
-    return last;
-  }, maxLength);
+  // Find a good breakpoint
+  let breakpoint = text.substring(0, maxLength).lastIndexOf('.');
+  if (breakpoint === -1) breakpoint = text.substring(0, maxLength).lastIndexOf(' ');
+  if (breakpoint === -1) breakpoint = maxLength;
 
   return {
-    content: content.slice(0, lastSentenceEnd).trim() + "\n\nI can provide more detailed explanation if you'd like.",
+    content: text.substring(0, breakpoint + 1) + "\n\nI can provide more details if you'd like.",
     hasMore: true
   };
 }
@@ -43,29 +39,31 @@ export async function registerRoutes(app: Express) {
         try {
           const aiResponse = await chat(messageData.content);
 
-          // Only truncate if it's not a "show more" request
-          const shouldTruncate = !messageData.content.includes("provide more detail") && 
-                               !messageData.content.includes("show more");
+          // Only truncate if not explicitly asking for details
+          const isRequestingDetails = messageData.content.toLowerCase().includes("more detail") || 
+                                    messageData.content.toLowerCase().includes("show more");
 
-          let finalContent = aiResponse.content;
-          let hasMore = false;
+          let content = aiResponse.content;
+          let codeBlocks = aiResponse.codeBlocks;
 
-          if (shouldTruncate) {
-            const truncated = truncateResponse(aiResponse.content);
-            finalContent = truncated.content;
-            hasMore = truncated.hasMore;
+          if (!isRequestingDetails) {
+            const { content: truncatedContent, hasMore } = truncateResponse(content);
+            content = truncatedContent;
+            // Keep only first code block for brevity
+            codeBlocks = codeBlocks.slice(0, 1);
           }
 
           const aiMessage = await storage.addMessage({
             role: "assistant",
-            content: finalContent,
-            codeBlocks: aiResponse.codeBlocks.slice(0, shouldTruncate ? 1 : undefined),
+            content: content,
+            codeBlocks: codeBlocks,
           });
+
           res.json([message, aiMessage]);
         } catch (error) {
           console.error("AI Response Error:", error);
           res.status(500).json({ 
-            error: "Failed to get AI response. Please try again later.",
+            error: "Failed to get AI response",
             messages: [message]
           });
         }
@@ -77,9 +75,7 @@ export async function registerRoutes(app: Express) {
         res.status(400).json({ error: error.errors });
       } else {
         console.error("Server Error:", error);
-        res.status(500).json({ 
-          error: "An unexpected error occurred. Please try again later." 
-        });
+        res.status(500).json({ error: "An unexpected error occurred" });
       }
     }
   });
