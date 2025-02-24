@@ -2,36 +2,23 @@ import { HfInference } from "@huggingface/inference";
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY || "");
 
-const systemPrompt = `You are an expert AI Learning Assistant specializing in Python programming and advanced topics in Machine Learning, Deep Learning, Data Science, and Artificial Intelligence. Your responses should:
+const systemPrompt = `You are an expert AI Learning Assistant specializing in Python, ML, Data Science, and AI. Important guidelines:
 
-1. For Programming Questions:
-   - Provide clear Python solutions with explanations
-   - Include time and space complexity analysis
-   - Explain the approach step by step
-   - Use popular libraries like NumPy, Pandas, scikit-learn, TensorFlow, or PyTorch when relevant
+1. Always provide a concise initial response (2-3 sentences max) with a basic code example if relevant
+2. For complex topics, mention "I can provide more detailed explanation if you'd like"
+3. If user specifically asks for detailed explanation, then provide comprehensive response
 
-2. For ML/AI Concepts:
-   - Explain theoretical concepts clearly with practical examples
-   - Include code implementations when applicable
-   - Discuss common use cases and best practices
-   - Reference relevant research papers or techniques
-   - Explain mathematical intuition behind algorithms
-
-3. For Data Science Topics:
-   - Show data preprocessing and analysis techniques
-   - Demonstrate visualization approaches using libraries like matplotlib or seaborn
-   - Explain statistical concepts with practical examples
-   - Include data manipulation with Pandas
-
-Format your response as:
+Your response format should be:
 {
-  "content": "Your explanation and discussion here",
-  "codeBlocks": ["First code block", "Second code block", ...]
+  "content": "Your concise explanation here",
+  "codeBlocks": ["Brief code example"],
+  "hasMoreDetails": boolean
 }`;
 
 export async function chat(userMessage: string): Promise<{
   content: string;
   codeBlocks: string[];
+  hasMoreDetails?: boolean;
 }> {
   try {
     const prompt = `${systemPrompt}\n\nUser: ${userMessage}\n\nAssistant:`;
@@ -40,13 +27,13 @@ export async function chat(userMessage: string): Promise<{
       model: "codellama/CodeLlama-34b-Instruct-hf",
       inputs: prompt,
       parameters: {
-        max_new_tokens: 2000,  // Increased for longer responses
+        max_new_tokens: 1000,
         temperature: 0.7,
         return_full_text: false,
       },
     });
 
-    // Extract code blocks using regex
+    // Extract code blocks and content
     const text = response.generated_text;
     const codeBlockRegex = /```(?:python)?([\s\S]*?)```/g;
     const codeBlocks: string[] = [];
@@ -68,17 +55,19 @@ export async function chat(userMessage: string): Promise<{
     // Try to parse as JSON if the response is in JSON format
     try {
       const jsonResponse = JSON.parse(content);
-      if (jsonResponse.content && Array.isArray(jsonResponse.codeBlocks)) {
-        return jsonResponse;
-      }
+      return {
+        content: jsonResponse.content,
+        codeBlocks: jsonResponse.codeBlocks || [],
+        hasMoreDetails: jsonResponse.hasMoreDetails,
+      };
     } catch (e) {
       // If not JSON, return the formatted content and code blocks
+      return {
+        content,
+        codeBlocks,
+        hasMoreDetails: content.includes("more detail") || content.includes("detailed explanation"),
+      };
     }
-
-    return {
-      content,
-      codeBlocks,
-    };
   } catch (error) {
     console.error("HuggingFace API Error:", error);
     throw new Error("Failed to get response: " + (error as Error).message);

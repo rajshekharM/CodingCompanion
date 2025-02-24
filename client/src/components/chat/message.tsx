@@ -1,7 +1,10 @@
 import { type Message } from "@shared/schema";
 import { CodeBlock } from "./code-block";
 import { Card } from "@/components/ui/card";
-import { User, Bot } from "lucide-react";
+import { User, Bot, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface ChatMessageProps {
   message: Message;
@@ -9,6 +12,19 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
+
+  const getDetails = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/messages", {
+        role: "user",
+        content: "Please provide the detailed explanation for your previous response",
+        codeBlocks: [],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+    },
+  });
 
   // Function to format text with different styles for code and comments
   const formatText = (text: string) => {
@@ -93,6 +109,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
     }
   };
 
+  const hasMoreDetails = !isUser && message.content.includes("more detail");
+
   return (
     <div className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={`flex gap-4 max-w-[85%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
@@ -128,6 +146,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 <CodeBlock key={index} code={code.trim()} />
               ))}
             </div>
+          )}
+
+          {hasMoreDetails && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-4 w-full justify-center hover:bg-violet-500/10 text-violet-400"
+              onClick={() => getDetails.mutate()}
+              disabled={getDetails.isPending}
+            >
+              <ChevronDown className="w-4 h-4 mr-2" />
+              Show detailed explanation
+            </Button>
           )}
 
           <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
