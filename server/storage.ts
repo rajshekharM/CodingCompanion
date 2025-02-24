@@ -1,5 +1,4 @@
 import { messages, type Message, type InsertMessage } from "@shared/schema";
-import { db } from "./db";
 import { desc } from "drizzle-orm";
 
 export interface IStorage {
@@ -8,25 +7,30 @@ export interface IStorage {
   clearMessages(): Promise<void>;
 }
 
-export class DatabaseStorage implements IStorage {
+// In-memory storage implementation
+export class MemStorage implements IStorage {
+  private messages: Message[] = [];
+  private nextId = 1;
+
   async getMessages(): Promise<Message[]> {
-    return await db.select().from(messages).orderBy(desc(messages.timestamp));
+    // Return messages sorted by timestamp (newest first)
+    return [...this.messages].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
   async addMessage(insertMessage: InsertMessage): Promise<Message> {
-    const [message] = await db
-      .insert(messages)
-      .values({
-        ...insertMessage,
-        timestamp: new Date(),
-      })
-      .returning();
+    const message: Message = {
+      ...insertMessage,
+      id: this.nextId++,
+      timestamp: new Date(),
+    };
+    this.messages.push(message);
     return message;
   }
 
   async clearMessages(): Promise<void> {
-    await db.delete(messages);
+    this.messages = [];
+    this.nextId = 1;
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();
