@@ -25,9 +25,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
           )}
         </div>
 
-        <Card className={`p-5 space-y-3 shadow-md ${isUser ? 'bg-primary/5' : 'bg-card'}`}>
-          <div className="prose prose-sm max-w-none">
-            <div className="whitespace-pre-wrap text-foreground/90">{message.content}</div>
+        <Card className={`p-5 space-y-4 shadow-md ${isUser ? 'bg-primary/5' : 'bg-card'}`}>
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:bg-muted">
+            <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
+              {message.content}
+            </div>
           </div>
 
           {message.codeBlocks && message.codeBlocks.map((code, index) => (

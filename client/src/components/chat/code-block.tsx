@@ -20,11 +20,11 @@ export function CodeBlock({ code }: CodeBlockProps) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative rounded-md overflow-hidden ring-1 ring-primary/10">
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-2 top-2"
+        className="absolute right-2 top-2 bg-muted/50 hover:bg-muted"
         onClick={copyCode}
       >
         <Copy className="h-4 w-4" />
@@ -35,8 +35,10 @@ export function CodeBlock({ code }: CodeBlockProps) {
         style={oneDark}
         customStyle={{
           margin: 0,
-          borderRadius: "0.5rem",
-          padding: "1rem",
+          padding: "1.25rem",
+          fontSize: "0.875rem",
+          lineHeight: "1.5",
+          fontFamily: "JetBrains Mono, monospace",
         }}
       >
         {code}
