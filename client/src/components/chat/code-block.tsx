@@ -20,14 +20,14 @@ export function CodeBlock({ code }: CodeBlockProps) {
   };
 
   return (
-    <div className="relative rounded-md overflow-hidden ring-1 ring-primary/10">
+    <div className="relative rounded-md overflow-hidden ring-1 ring-zinc-700/50 bg-zinc-900">
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-2 top-2 bg-muted/50 hover:bg-muted"
+        className="absolute right-2 top-2 bg-zinc-800/50 hover:bg-zinc-700/50"
         onClick={copyCode}
       >
-        <Copy className="h-4 w-4" />
+        <Copy className="h-4 w-4 text-zinc-400" />
       </Button>
 
       <SyntaxHighlighter
@@ -39,6 +39,7 @@ export function CodeBlock({ code }: CodeBlockProps) {
           fontSize: "0.875rem",
           lineHeight: "1.5",
           fontFamily: "JetBrains Mono, monospace",
+          backgroundColor: "transparent",
         }}
       >
         {code}
