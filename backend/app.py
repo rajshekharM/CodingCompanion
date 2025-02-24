@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from datetime import datetime
 import os
 from .huggingface import chat
@@ -94,23 +94,36 @@ async def create_message(message: MessageCreate):
 
         if message.role == "user":
             try:
-                # Get relevant document chunks
-                relevant_chunks = doc_processor.get_relevant_chunks(message.content)
-                logger.info(f"Found {len(relevant_chunks)} relevant chunks for query")
+                # Get relevant document chunks with similarity scores
+                chunk_results = doc_processor.get_relevant_chunks(
+                    message.content,
+                    k=3,
+                    similarity_threshold=0.6  # Adjust threshold as needed
+                )
 
-                if relevant_chunks:
-                    logger.info("Relevant chunks found, constructing context-aware prompt")
-                    context = "\n".join(f"Chunk {i+1}:\n{chunk}" for i, chunk in enumerate(relevant_chunks))
-                    prompt = f"""Using the following context from uploaded documents, answer the question. Be specific and reference the context in your answer.
+                if chunk_results:
+                    logger.info(f"Found {len(chunk_results)} relevant chunks")
+                    # Format context with chunks and their similarity scores
+                    context_parts = []
+                    for i, (chunk, score) in enumerate(chunk_results):
+                        context_parts.append(f"[Relevance: {score:.2f}]\n{chunk}")
+                    context = "\n\n".join(context_parts)
 
-Context:
+                    prompt = f"""Using the following relevant sections from uploaded documents, answer the question.
+Each section includes a relevance score (0-1) indicating how closely it matches the query.
+
+Relevant Sections:
 {context}
 
 Question: {message.content}
 
-Ensure your answer directly references and uses information from the context if relevant."""
+Instructions:
+1. Use the most relevant sections above to form your answer
+2. Cite specific information from the sections when possible
+3. If the sections aren't relevant enough, say so and provide a general answer instead
+"""
                 else:
-                    logger.info("No relevant chunks found, using general prompt")
+                    logger.info("No sufficiently relevant chunks found, using general prompt")
                     prompt = message.content
 
                 ai_response = await chat(prompt)

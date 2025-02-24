@@ -5,7 +5,7 @@ from pypdf import PdfReader
 import faiss
 import numpy as np
 import os
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -17,10 +17,10 @@ class DocumentProcessor:
             model_name="sentence-transformers/all-mpnet-base-v2"
         )
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,  # Smaller chunks for more precise retrieval
+            chunk_size=300,  # Smaller chunks for more precise matching
             chunk_overlap=50,
             length_function=len,
-            separators=["\n\n", "\n", " ", ""]
+            separators=["\n\n", "\n", ".", " ", ""]
         )
         self.vector_store: Optional[faiss.IndexFlatL2] = None
         self.chunks: List[str] = []
@@ -49,7 +49,8 @@ class DocumentProcessor:
             # Split text into chunks
             self.chunks = self.text_splitter.split_text(raw_text)
             logger.info(f"Created {len(self.chunks)} chunks")
-            logger.debug(f"First chunk sample: {self.chunks[0][:100]}...")
+            for i, chunk in enumerate(self.chunks[:3]):
+                logger.debug(f"Chunk {i} preview: {chunk[:100]}...")
 
             return self.chunks
 
@@ -85,29 +86,40 @@ class DocumentProcessor:
             logger.error(f"Error creating vector store: {str(e)}", exc_info=True)
             raise
 
-    def get_relevant_chunks(self, query: str, k: int = 3) -> List[str]:
-        """Get most relevant chunks for a query"""
+    def get_relevant_chunks(self, query: str, k: int = 3, similarity_threshold: float = 0.7) -> List[Tuple[str, float]]:
+        """Get most relevant chunks for a query with similarity scores"""
         try:
             if not self.vector_store or not self.chunks:
                 logger.warning("No vector store or chunks available")
                 return []
 
-            logger.info(f"Searching for chunks relevant to query: {query[:50]}...")
+            logger.info(f"Searching for chunks relevant to query: {query}")
 
             # Get query embedding
             query_embedding = self.embeddings.embed_query(query)
 
             # Search in FAISS
             D, I = self.vector_store.search(
-                np.array([query_embedding]).astype('float32'), k
+                np.array([query_embedding]).astype('float32'), 
+                k
             )
 
-            # Get relevant chunks
-            relevant_chunks = [self.chunks[i] for i in I[0]]
-            logger.info(f"Found {len(relevant_chunks)} relevant chunks")
-            logger.info(f"Similarity scores: {D[0]}")
+            # Filter and return relevant chunks with scores
+            results = []
+            for score, idx in zip(D[0], I[0]):
+                # Convert L2 distance to similarity score (0 to 1)
+                similarity = 1 / (1 + score)
+                if similarity >= similarity_threshold:
+                    results.append((self.chunks[idx], similarity))
+                    logger.info(f"Found relevant chunk with similarity {similarity:.2f}")
+                    logger.debug(f"Chunk preview: {self.chunks[idx][:100]}...")
 
-            return relevant_chunks
+            if not results:
+                logger.warning("No chunks met the similarity threshold")
+            else:
+                logger.info(f"Found {len(results)} relevant chunks above threshold")
+
+            return results
 
         except Exception as e:
             logger.error(f"Error retrieving chunks: {str(e)}", exc_info=True)
