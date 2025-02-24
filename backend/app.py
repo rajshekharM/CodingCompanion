@@ -86,7 +86,6 @@ async def create_message(message: MessageCreate):
         )
         message_id_counter += 1
         messages.append(user_message)
-
         response_messages = [user_message]
 
         if message.role == "user":
@@ -95,19 +94,25 @@ async def create_message(message: MessageCreate):
                 relevant_chunks = doc_processor.get_relevant_chunks(message.content)
                 context = "\n".join(relevant_chunks) if relevant_chunks else ""
 
-                # Add context to the prompt if available
+                # Construct prompt with context
                 prompt = message.content
                 if context:
                     logger.info("Adding document context to prompt")
-                    prompt = f"Context from uploaded documents:\n{context}\n\nUser question: {message.content}\n\nUse the context above if relevant to answer the following question."
+                    prompt = f"""Based on the following context, answer the question. If the context isn't relevant, you may answer based on your general knowledge.
+
+Context:
+{context}
+
+Question: {message.content}
+
+Please provide a specific and relevant answer, directly referencing the context if applicable."""
 
                 ai_response = await chat(prompt)
-
                 ai_message = Message(
                     id=message_id_counter,
                     role="assistant",
                     content=ai_response["content"],
-                    code_blocks=ai_response["code_blocks"],
+                    codeBlocks=ai_response["code_blocks"],
                     timestamp=datetime.utcnow()
                 )
                 message_id_counter += 1
