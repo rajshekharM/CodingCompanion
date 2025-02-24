@@ -2,7 +2,6 @@ import { type Message } from "@shared/schema";
 import { CodeBlock } from "./code-block";
 import { Card } from "@/components/ui/card";
 import { User, Bot } from "lucide-react";
-import { useState } from "react";
 
 interface ChatMessageProps {
   message: Message;
@@ -10,7 +9,6 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
-  const [lineCount, setLineCount] = useState(1);
 
   // Function to format text with different styles for code and comments
   const formatText = (text: string) => {
@@ -21,23 +19,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
         return formatText(jsonData.content);
       }
 
-      // Split the text into lines for line numbering
+      // Split the text into lines
       const lines = text.split('\n');
-      setLineCount(lines.length);
 
       return (
-        <div className="flex">
-          {/* Line numbers */}
-          <div className="select-none pr-4 text-right font-mono text-xs text-zinc-500 border-r border-zinc-700 mr-4">
-            {lines.map((_, i) => (
-              <div key={i} className="leading-relaxed">
-                {i + 1}
-              </div>
-            ))}
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
+        <div className="relative">
+          <div className="space-y-2">
             {lines.map((line, lineIndex) => {
               // Handle code blocks marked with backticks
               const parts = line.split(/(`[^`]+`)/);
