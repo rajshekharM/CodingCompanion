@@ -28,88 +28,81 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   // Function to format text with different styles for code and comments
   const formatText = (text: string) => {
-    try {
-      // Check if the text is a JSON string and parse it
-      if (text.trim().startsWith("{") && text.includes('"content"')) {
-        const jsonData = JSON.parse(text);
-        return formatText(jsonData.content);
-      }
+    // Split the text into lines
+    const lines = text.split('\n');
 
-      // Split the text into lines
-      const lines = text.split('\n');
-
-      return (
-        <div className="relative">
-          <div className="space-y-2">
-            {lines.map((line, lineIndex) => {
-              // Handle code blocks marked with backticks
-              const parts = line.split(/(`[^`]+`)/);
-              return (
-                <div key={lineIndex} className="leading-relaxed">
-                  {parts.map((part, partIndex) => {
-                    if (part.startsWith('`') && part.endsWith('`')) {
-                      return (
-                        <code key={partIndex} className="px-1.5 py-0.5 rounded-md bg-zinc-800 font-mono text-sm text-emerald-300">
-                          {part.slice(1, -1)}
-                        </code>
-                      );
-                    }
-
-                    // Format special line types
-                    if (part.trim().startsWith('#')) {
-                      return (
-                        <span key={partIndex} className="text-zinc-400 italic">
-                          {part}
-                        </span>
-                      );
-                    }
-                    if (part.trim().match(/^\d+\./)) {
-                      return (
-                        <span key={partIndex} className="text-primary font-medium">
-                          {part}
-                        </span>
-                      );
-                    }
-                    if (part.trim().match(/^[-*]/)) {
-                      return (
-                        <span key={partIndex} className="text-zinc-300 ml-2">
-                          {part}
-                        </span>
-                      );
-                    }
-
-                    // Handle keywords and syntax highlighting
-                    const highlightedText = part.replace(
-                      /(import|from|def|class|return|if|else|for|while|try|except|raise|async|await|print)\b/g,
-                      '<span class="text-violet-400">$1</span>'
-                    ).replace(
-                      /(".*?"|'.*?')/g,
-                      '<span class="text-amber-300">$1</span>'
-                    ).replace(
-                      /\b(\d+)\b/g,
-                      '<span class="text-cyan-300">$1</span>'
-                    );
-
+    return (
+      <div className="relative">
+        <div className="space-y-2">
+          {lines.map((line, lineIndex) => {
+            // Handle code blocks marked with backticks
+            const parts = line.split(/(`[^`]+`)/);
+            return (
+              <div key={lineIndex} className="leading-relaxed">
+                {parts.map((part, partIndex) => {
+                  if (part.startsWith('`') && part.endsWith('`')) {
                     return (
-                      <span 
-                        key={partIndex} 
-                        className="text-zinc-200"
-                        dangerouslySetInnerHTML={{ __html: highlightedText }}
-                      />
+                      <code key={partIndex} className="px-1.5 py-0.5 rounded-md bg-zinc-800 font-mono text-sm text-emerald-300">
+                        {part.slice(1, -1)}
+                      </code>
                     );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+                  }
+
+                  // Format special line types
+                  if (part.trim().startsWith('#')) {
+                    return (
+                      <span key={partIndex} className="text-zinc-400 italic">
+                        {part}
+                      </span>
+                    );
+                  }
+                  if (part.trim().match(/^\d+\./)) {
+                    return (
+                      <span key={partIndex} className="text-primary font-medium">
+                        {part}
+                      </span>
+                    );
+                  }
+                  if (part.trim().match(/^[-*]/)) {
+                    return (
+                      <span key={partIndex} className="text-zinc-300 ml-2">
+                        {part}
+                      </span>
+                    );
+                  }
+
+                  // Handle keywords and syntax highlighting
+                  const highlightedText = part.replace(
+                    /(import|from|def|class|return|if|else|for|while|try|except|raise|async|await|print)\b/g,
+                    '<span class="text-violet-400">$1</span>'
+                  ).replace(
+                    /(".*?"|'.*?')/g,
+                    '<span class="text-amber-300">$1</span>'
+                  ).replace(
+                    /\b(\d+)\b/g,
+                    '<span class="text-cyan-300">$1</span>'
+                  );
+
+                  return (
+                    <span 
+                      key={partIndex} 
+                      className="text-zinc-200"
+                      dangerouslySetInnerHTML={{ __html: highlightedText }}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
-      );
-    } catch (error) {
-      return text;
-    }
+      </div>
+    );
   };
 
-  const hasMoreDetails = !isUser && message.content.includes("more detail");
+  const hasMoreDetails = !isUser && (
+    message.content.includes("more detailed explanation") || 
+    message.content.includes("I can provide more")
+  );
 
   return (
     <div className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
