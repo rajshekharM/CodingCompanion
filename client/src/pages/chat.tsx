@@ -45,7 +45,7 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="border-b backdrop-blur-sm bg-background/80 sticky top-0 z-10 p-4 flex justify-between items-center shadow-sm">
+      <header className="border-b bg-background p-4 flex justify-between items-center">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           Python & DSA Assistant
         </h1>
@@ -63,7 +63,7 @@ export default function Chat() {
       <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto max-w-4xl p-4 space-y-6">
           {isLoading ? (
-            <div className="flex justify-center items-center min-h-[400px]">
+            <div className="flex justify-center items-center min-h-[200px]">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : messages?.length === 0 ? (
@@ -79,7 +79,7 @@ export default function Chat() {
         </div>
       </main>
 
-      <footer className="border-t bg-background p-4 mt-auto">
+      <footer className="border-t bg-background p-4">
         <div className="container mx-auto max-w-4xl">
           <ChatInput
             onSubmit={(content) => sendMessage.mutate(content)}

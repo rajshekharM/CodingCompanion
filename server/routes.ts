@@ -3,35 +3,12 @@ import { createServer } from "http";
 import { storage } from "./storage";
 import { insertMessageSchema } from "@shared/schema";
 import { chat } from "./lib/huggingface";
-import { executeCode } from "./lib/codeExecutor";
 import { ZodError } from "zod";
-import { z } from "zod";
-
-const executeCodeSchema = z.object({
-  code: z.string().min(1),
-});
 
 export async function registerRoutes(app: Express) {
   app.get("/api/messages", async (_req, res) => {
     const messages = await storage.getMessages();
     res.json(messages);
-  });
-
-  app.post("/api/execute", async (req, res) => {
-    try {
-      const { code } = executeCodeSchema.parse(req.body);
-      const result = await executeCode(code);
-      res.json(result);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json({ error: error.errors });
-      } else {
-        console.error("Code Execution Error:", error);
-        res.status(500).json({ 
-          error: "Failed to execute code. Please try again." 
-        });
-      }
-    }
   });
 
   app.post("/api/messages", async (req, res) => {
