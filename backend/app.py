@@ -1,14 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+import logging
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import os
 from .huggingface import chat
-from .middleware.logging import RequestLogMiddleware
 from .document_processor import doc_processor
-import logging
-import json
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -18,16 +16,12 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-
 app = FastAPI(title="Python & DSA Assistant")
-
-# Add logging middleware
-app.add_middleware(RequestLogMiddleware)
 
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development, update in production
+    allow_origins=["*"],  # For development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,13 +36,8 @@ class Message(MessageBase):
     id: int
     timestamp: datetime
 
-    class Config:
-        from_attributes = True
-
-class MessageCreate(BaseModel):
-    role: str
-    content: str
-    code_blocks: List[str] = []
+class MessageCreate(MessageBase):
+    pass
 
 # In-memory storage
 messages: List[Message] = []
@@ -57,6 +46,7 @@ message_id_counter = 1
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
+        logger.info(f"Processing uploaded file: {file.filename}")
         # Save file temporarily
         file_path = f"temp_{file.filename}"
         with open(file_path, "wb") as f:
@@ -65,19 +55,25 @@ async def upload_file(file: UploadFile = File(...)):
 
         # Process the document
         chunks = doc_processor.process_pdf(file_path)
+        if not chunks:
+            raise HTTPException(status_code=400, detail="No text content found in PDF")
+
         doc_processor.create_vector_store()
 
         # Clean up
         os.remove(file_path)
-
+        logger.info("Document processed successfully")
         return {"message": "Document processed successfully"}
+
     except Exception as e:
         logger.error(f"Error processing document: {str(e)}")
+        if os.path.exists(file_path):
+            os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/messages", response_model=List[Message])
 async def get_messages():
-    return sorted(messages, key=lambda x: x.timestamp, reverse=True)
+    return messages
 
 @app.post("/api/messages", response_model=List[Message])
 async def create_message(message: MessageCreate):
@@ -102,7 +98,8 @@ async def create_message(message: MessageCreate):
                 # Add context to the prompt if available
                 prompt = message.content
                 if context:
-                    prompt = f"Using this context:\n{context}\n\nUser question: {message.content}"
+                    logger.info("Adding document context to prompt")
+                    prompt = f"Context from uploaded documents:\n{context}\n\nUser question: {message.content}\n\nUse the context above if relevant to answer the following question."
 
                 ai_response = await chat(prompt)
 
@@ -116,6 +113,7 @@ async def create_message(message: MessageCreate):
                 message_id_counter += 1
                 messages.append(ai_message)
                 response_messages.append(ai_message)
+
             except Exception as e:
                 logger.error(f"AI Response Error: {str(e)}")
                 raise HTTPException(
@@ -137,7 +135,3 @@ async def clear_messages():
     messages = []
     message_id_counter = 1
     return {"status": "success"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
