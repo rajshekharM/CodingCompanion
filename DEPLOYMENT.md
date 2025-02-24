@@ -31,8 +31,116 @@
    - 750 hours/month of runtime
    - Automatic deployments
 
-## Environment Setup
+## Scaling Options
 
+### Frontend Scaling (Vercel)
+1. Edge Network:
+   ```json
+   {
+     "regions": ["all"],
+     "functions": {
+       "api/*.ts": {
+         "memory": 1024,
+         "maxDuration": 10
+       }
+     }
+   }
+   ```
+
+2. Caching Strategies:
+   - Enable ISR (Incremental Static Regeneration)
+   - Configure stale-while-revalidate
+   - Use React Query's caching capabilities
+
+3. Performance Optimizations:
+   - Enable image optimization
+   - Use dynamic imports
+   - Implement code splitting
+   - Enable compression
+
+### Backend Scaling (Render)
+1. Horizontal Scaling:
+   - Scale to multiple instances
+   - Auto-scaling based on CPU/Memory usage
+   - Load balancer configuration
+
+2. Memory and CPU:
+   ```bash
+   # In Render Dashboard:
+   - CPU: 1-4 vCPUs
+   - Memory: 512MB-8GB
+   - Concurrent connections: Up to 1000
+   ```
+
+3. Caching Layer:
+   ```python
+   # Add Redis caching for responses
+   from fastapi_cache import FastAPICache
+   from fastapi_cache.backends.redis import RedisBackend
+
+   @app.on_event("startup")
+   async def startup():
+       FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+
+   @app.get("/api/messages", response_model=List[Message])
+   @cache(expire=60)  # Cache for 60 seconds
+   async def get_messages():
+       return messages
+   ```
+
+4. Rate Limiting:
+   ```python
+   from fastapi import Request
+   from fastapi.middleware.throttling import ThrottlingMiddleware
+
+   app.add_middleware(
+       ThrottlingMiddleware,
+       rate=100,  # requests
+       period=60  # seconds
+   )
+   ```
+
+### Database Scaling
+1. Connection Pooling:
+   ```python
+   from databases import Database
+
+   DATABASE_URL = os.getenv("DATABASE_URL")
+   database = Database(DATABASE_URL, min_size=5, max_size=20)
+   ```
+
+2. Query Optimization:
+   - Index frequently accessed fields
+   - Implement pagination
+   - Use efficient queries
+
+### Monitoring and Alerts
+1. Application Logs:
+   - All logs are stored in `app.log`
+   - View logs directly in Render's dashboard
+   - Use Render's metrics dashboard
+
+2. Frontend Analytics (Free):
+   - Use Vercel's built-in analytics
+   - Monitor page views, load times
+   - Track API route performance
+
+3. Performance Monitoring:
+   ```python
+   from prometheus_fastapi_instrumentator import Instrumentator
+
+   @app.on_event("startup")
+   async def startup():
+       Instrumentator().instrument(app).expose(app)
+   ```
+
+## Cost Management Tips
+1. Use serverless functions to minimize idle time
+2. Implement proper caching
+3. Monitor bandwidth usage
+4. Set up usage alerts in Render dashboard
+
+## Environment Setup
 Create a `.env` file for local development:
 ```env
 HUGGINGFACE_API_KEY=your_key_here
@@ -50,20 +158,6 @@ HUGGINGFACE_API_KEY=your_key_here
    - Monitor page views, load times
    - Track API route performance
 
-3. Vercel Analytics Setup:
-```javascript
-// Already configured in _app.tsx
-import { Analytics } from '@vercel/analytics/react';
-
-export default function App({ Component, pageProps }) {
-  return (
-    <>
-      <Component {...pageProps} />
-      <Analytics /> {/* Free analytics! */}
-    </>
-  );
-}
-```
 
 ## Deployment Commands
 
@@ -75,32 +169,6 @@ vercel deploy # Just connect your GitHub repo instead
 # Backend (Render)
 # Just connect your GitHub repo, Render handles the rest
 ```
-
-## GitHub Sync & Automatic Deployment
-
-### Setting Up GitHub Sync in Replit
-1. In your Replit project:
-   - Click "Version Control" in the left sidebar
-   - Click "Connect to GitHub"
-   - Select your repository
-   - Authorize Replit
-
-2. Making Changes:
-   - Edit files in Replit
-   - Commit changes using Replit's Version Control
-   - Changes automatically push to GitHub
-
-3. Automatic Deployment Flow:
-   - Changes pushed to GitHub
-   - Vercel automatically deploys frontend updates
-   - Render automatically deploys backend updates
-
-### Best Practices
-1. Always commit working code
-2. Use meaningful commit messages
-3. Test locally before committing
-4. Monitor deployment logs
-
 
 ## Important Free Tier Limits
 
@@ -124,9 +192,3 @@ vercel deploy # Just connect your GitHub repo instead
 - Application logs: Render Dashboard -> Your Service -> Logs
 - Frontend analytics: Vercel Dashboard -> Your Project -> Analytics
 - API metrics: Render Dashboard -> Your Service -> Metrics
-
-## Cost Management Tips
-1. Use serverless functions to minimize idle time
-2. Implement proper caching
-3. Monitor bandwidth usage
-4. Set up usage alerts in Render dashboard

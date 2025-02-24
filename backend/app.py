@@ -1,12 +1,28 @@
 import logging
-from fastapi import FastAPI, HTTPException, UploadFile, File
+import time
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.decorator import cache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
 from datetime import datetime
 import os
 from .huggingface import chat
 from .document_processor import doc_processor
+
+# Configure logging with more details
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('app.log')
+    ]
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -27,6 +43,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add performance middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+
 class MessageBase(BaseModel):
     role: str
     content: str
@@ -43,16 +63,43 @@ class MessageCreate(MessageBase):
 messages: List[Message] = []
 message_id_counter = 1
 
+# Initialize caching on startup
+@app.on_event("startup")
+async def startup():
+    FastAPICache.init(InMemoryBackend())
+    logger.info("Application startup complete")
+
+# Add caching to heavy operations
+@app.get("/api/messages", response_model=List[Message])
+@cache(expire=30)  # Cache for 30 seconds
+async def get_messages():
+    return messages
+
+# Add response time logging middleware
+@app.middleware("http")
+async def add_response_time(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    logger.info(f"Request to {request.url.path} took {process_time:.2f} seconds")
+    return response
+
+# Optimize file upload handling
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
-        logger.info(f"Processing uploaded file: {file.filename}")
+        # Process in chunks to handle large files
+        chunk_size = 1024 * 1024  # 1MB chunks
+        contents = b""
+
+        while chunk := await file.read(chunk_size):
+            contents += chunk
 
         # Save file temporarily
         file_path = f"temp_{file.filename}"
         with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+            f.write(contents)
 
         # Process the document
         chunks = doc_processor.process_pdf(file_path)
@@ -70,7 +117,7 @@ async def upload_file(file: UploadFile = File(...)):
         return {"message": "Document processed successfully", "chunks": len(chunks)}
 
     except Exception as e:
-        logger.error(f"Error processing document: {str(e)}")
+        logger.error(f"Error processing document: {str(e)}", exc_info=True)
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
@@ -160,3 +207,8 @@ async def clear_messages():
     messages = []
     message_id_counter = 1
     return {"status": "success"}
+
+# Add health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.utcnow()}
