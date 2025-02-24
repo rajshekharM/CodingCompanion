@@ -15,6 +15,20 @@ A high-performance AI-powered coding assistant for Python and Data Structures & 
 +------------------+     +-----------------+     +------------------+
 ```
 
+## Replit-GitHub Sync Setup
+
+1. In Replit:
+   - Open your project
+   - Click on "Version Control" in the left sidebar
+   - Click "Connect to GitHub"
+   - Select your repository
+   - Authorize Replit
+
+2. Auto-sync will now:
+   - Push changes when you commit in Replit
+   - Trigger deployments on Vercel (frontend)
+   - Trigger deployments on Render (backend)
+
 ## Architecture Overview
 
 ### Frontend (Next.js)
