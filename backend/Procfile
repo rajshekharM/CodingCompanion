@@ -1,1 +1,1 @@
-web: uvicorn app:app --host 0.0.0.0 --port $PORT --workers 4 --limit-concurrency 1000
+web: cd backend && PYTHONPATH=. uvicorn main:app --host 0.0.0.0 --port $PORT --workers 4 --limit-concurrency 1000

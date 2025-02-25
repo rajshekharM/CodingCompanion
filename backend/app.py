@@ -1,36 +1,21 @@
 import logging
+import os
 import time
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
 from datetime import datetime
-import os
-from .huggingface import chat
-from .document_processor import doc_processor
 
-# Configure logging with more details
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('app.log')
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
-# Configure logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 app = FastAPI(title="Python & DSA Assistant")
 
@@ -43,9 +28,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add performance middleware
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    logger.info(f"Request to {request.url.path} took {process_time:.2f} seconds")
+    return response
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint to verify API is running"""
+    port = os.environ.get("PORT", "Not set")
+    logger.info(f"Health check called. PORT env var: {port}")
+    return {
+        "status": "healthy",
+        "port": port,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "version": "1.0.0"
+    }
 
 class MessageBase(BaseModel):
     role: str
@@ -75,15 +76,6 @@ async def startup():
 async def get_messages():
     return messages
 
-# Add response time logging middleware
-@app.middleware("http")
-async def add_response_time(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    logger.info(f"Request to {request.url.path} took {process_time:.2f} seconds")
-    return response
 
 # Optimize file upload handling
 @app.post("/api/upload")
@@ -101,7 +93,8 @@ async def upload_file(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             f.write(contents)
 
-        # Process the document
+        # Process the document (assuming doc_processor is defined elsewhere)
+        from .document_processor import doc_processor #Import here to avoid circular import
         chunks = doc_processor.process_pdf(file_path)
         if not chunks:
             raise HTTPException(status_code=400, detail="No text content found in PDF")
@@ -122,10 +115,6 @@ async def upload_file(file: UploadFile = File(...)):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/messages", response_model=List[Message])
-async def get_messages():
-    return messages
-
 @app.post("/api/messages", response_model=List[Message])
 async def create_message(message: MessageCreate):
     global message_id_counter
@@ -141,7 +130,8 @@ async def create_message(message: MessageCreate):
 
         if message.role == "user":
             try:
-                # Get relevant document chunks with similarity scores
+                # Get relevant document chunks with similarity scores (assuming doc_processor is defined elsewhere)
+                from .document_processor import doc_processor #Import here to avoid circular import
                 chunk_results = doc_processor.get_relevant_chunks(
                     message.content,
                     k=3,
@@ -179,6 +169,7 @@ Question: {message.content}
 
 Note: No relevant context was found in the uploaded documents for this question."""
 
+                from .huggingface import chat #Import here to avoid circular import
                 ai_response = await chat(prompt)
                 ai_message = Message(
                     id=message_id_counter,
@@ -214,16 +205,7 @@ async def clear_messages():
     message_id_counter = 1
     return {"status": "success"}
 
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint to verify API is running"""
-    try:
-        # Add basic health checks here
-        return {
-            "status": "healthy",
-            "timestamp": str(datetime.utcnow()),
-            "version": "1.0.0"
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        raise HTTPException(status_code=500, detail="Health check failed")
+
+# Import and register routes after the app is configured
+from .routes import register_routes
+register_routes(app)
