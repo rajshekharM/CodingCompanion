@@ -13,13 +13,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Log startup information
-logger.info("Starting FastAPI application")
-port = os.environ.get("PORT")
-logger.info(f"PORT environment variable: {port}")
-
 # Initialize FastAPI app
-app = FastAPI(title="Python & DSA Assistant")
+app = FastAPI()
 
 # Enable CORS
 app.add_middleware(
@@ -50,28 +45,34 @@ message_id_counter = 1
 @app.get("/")
 async def root():
     """Root endpoint"""
-    return {"message": "Welcome to Python & DSA Assistant API"}
+    logger.info("Root endpoint called")
+    return {"message": "API is running"}
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
     try:
-        logger.info("Health check endpoint called")
+        port = os.environ.get("PORT", "Not set")
+        logger.info(f"Health check called. PORT={port}")
         return {
             "status": "healthy",
-            "port": os.environ.get("PORT", "Not set"),
+            "port": port,
             "timestamp": datetime.utcnow().isoformat(),
             "version": "1.0.0"
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "error", "detail": str(e)}
 
 @app.get("/api/messages", response_model=List[Message])
 async def get_messages():
     """Get all messages"""
-    logger.info("Fetching messages")
-    return messages
+    try:
+        logger.info("Fetching messages")
+        return messages
+    except Exception as e:
+        logger.error(f"Error fetching messages: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/messages", response_model=List[Message])
 async def create_message(message: MessageCreate):
@@ -87,7 +88,7 @@ async def create_message(message: MessageCreate):
         message_id_counter += 1
         messages.append(user_message)
 
-        # Simple response
+        # Basic response
         if message.role == "user":
             ai_message = Message(
                 id=message_id_counter,
@@ -98,6 +99,7 @@ async def create_message(message: MessageCreate):
             )
             message_id_counter += 1
             messages.append(ai_message)
+            logger.info("Created AI response message")
             return [user_message, ai_message]
         return [user_message]
     except Exception as e:
@@ -108,13 +110,17 @@ async def create_message(message: MessageCreate):
 async def clear_messages():
     """Clear all messages"""
     global messages, message_id_counter
-    logger.info("Clearing all messages")
-    messages = []
-    message_id_counter = 1
-    return {"status": "success"}
+    try:
+        logger.info("Clearing all messages")
+        messages = []
+        message_id_counter = 1
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error clearing messages: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     logger.info(f"Starting server on port {port}")
-    uvicorn.run("app:app", host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port)
