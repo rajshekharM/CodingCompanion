@@ -1,4 +1,11 @@
-# Deployment Instructions
+# Deployment Guide
+
+## Prerequisites
+1. Vercel CLI installed: `npm i -g vercel`
+2. Accounts on:
+   - Vercel (frontend)
+   - Render (backend)
+   - HuggingFace (API key)
 
 ## 1. Frontend Deployment (Vercel)
 
@@ -21,7 +28,7 @@
    - Name: python-dsa-assistant-backend
    - Environment: Python 3
    - Build Command: `pip install -r backend/requirements.txt`
-   - Start Command: `cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT`
+   - Start Command: `cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT --workers 4 --limit-concurrency 1000`
    - Environment Variables:
      ```
      HUGGINGFACE_API_KEY=your_huggingface_api_key

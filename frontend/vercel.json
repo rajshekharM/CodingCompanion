@@ -17,7 +17,14 @@
     }
   ],
   "github": {
-    "silent": true
+    "silent": true,
+    "autoAlias": true
   },
-  "regions": ["all"]
+  "regions": ["all"],
+  "functions": {
+    "api/*.ts": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }
