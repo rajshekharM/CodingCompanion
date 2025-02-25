@@ -7,46 +7,76 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from pydantic import BaseModel
-from typing import List, Optional, Tuple
+from typing import List
 from datetime import datetime
 
-# Configure logging
+# Enhanced logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
+# Log startup information and environment
+logger.info("Initializing FastAPI application")
+port = os.environ.get("PORT", "Not set")
+python_path = os.environ.get("PYTHONPATH", "Not set")
+logger.info(f"Startup environment - PORT: {port}, PYTHONPATH: {python_path}")
+
 app = FastAPI(title="Python & DSA Assistant")
 
 # Enable CORS
+origins = ["*"]  # In production, replace with actual frontend URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    try:
+        FastAPICache.init(InMemoryBackend())
+        logger.info("Cache initialization successful")
+        # Log all environment variables (excluding sensitive ones)
+        env_vars = {k: v for k, v in os.environ.items()
+                   if not any(s in k.lower() for s in ['key', 'secret', 'password', 'token'])}
+        logger.info(f"Environment variables: {env_vars}")
+    except Exception as e:
+        logger.error(f"Startup error: {str(e)}")
+        raise
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    logger.info(f"Request to {request.url.path} took {process_time:.2f} seconds")
-    return response
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        logger.info(f"Request to {request.url.path} completed in {process_time:.2f}s with status {response.status_code}")
+        return response
+    except Exception as e:
+        logger.error(f"Request to {request.url.path} failed after {time.time() - start_time:.2f}s: {str(e)}")
+        raise
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint to verify API is running"""
-    port = os.environ.get("PORT", "Not set")
-    logger.info(f"Health check called. PORT env var: {port}")
-    return {
-        "status": "healthy",
-        "port": port,
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "version": "1.0.0"
-    }
+    try:
+        logger.info("Health check endpoint called")
+        return {
+            "status": "healthy",
+            "port": os.environ.get("PORT", "Not set"),
+            "timestamp": datetime.utcnow().isoformat(),
+            "version": "1.0.0",
+            "environment": os.environ.get("PYTHON_ENV", "development"),
+            "python_path": os.environ.get("PYTHONPATH", "Not set")
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 class MessageBase(BaseModel):
     role: str
@@ -64,148 +94,105 @@ class MessageCreate(MessageBase):
 messages: List[Message] = []
 message_id_counter = 1
 
-# Initialize caching on startup
-@app.on_event("startup")
-async def startup():
-    FastAPICache.init(InMemoryBackend())
-    logger.info("Application startup complete")
+def register_routes(app: FastAPI):
+    @app.get("/api/messages", response_model=List[Message])
+    async def get_messages():
+        try:
+            return messages
+        except Exception as e:
+            logger.error(f"Error fetching messages: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
 
-# Add caching to heavy operations
-@app.get("/api/messages", response_model=List[Message])
-@cache(expire=30)  # Cache for 30 seconds
-async def get_messages():
-    return messages
+    @app.post("/api/messages", response_model=List[Message])
+    async def create_message(message: MessageCreate):
+        global message_id_counter
+        try:
+            logger.info(f"Creating new message with role: {message.role}")
+            user_message = Message(
+                id=message_id_counter,
+                timestamp=datetime.utcnow(),
+                **message.dict()
+            )
+            message_id_counter += 1
+            messages.append(user_message)
 
+            if message.role == "user":
+                try:
+                    from .huggingface import chat
+                    ai_response = await chat(message.content)
+                    ai_message = Message(
+                        id=message_id_counter,
+                        role="assistant",
+                        content=ai_response.content,
+                        code_blocks=ai_response.code_blocks,
+                        timestamp=datetime.utcnow()
+                    )
+                    message_id_counter += 1
+                    messages.append(ai_message)
+                    return [user_message, ai_message]
+                except Exception as e:
+                    logger.error(f"AI Response Error: {str(e)}")
+                    raise HTTPException(status_code=500, detail=str(e))
+            return [user_message]
+        except Exception as e:
+            logger.error(f"Message Creation Error: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
 
-# Optimize file upload handling
+    @app.delete("/api/messages")
+    async def clear_messages():
+        global messages, message_id_counter
+        messages = []
+        message_id_counter = 1
+        return {"status": "success"}
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        logger.info(f"Request to {request.url.path} took {process_time:.2f} seconds")
+        return response
+
+    return app
+
+register_routes(app)
+
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
-        # Process in chunks to handle large files
-        chunk_size = 1024 * 1024  # 1MB chunks
-        contents = b""
-
-        while chunk := await file.read(chunk_size):
-            contents += chunk
-
-        # Save file temporarily
+        logger.info(f"Processing file upload: {file.filename}")
+        contents = await file.read()
         file_path = f"temp_{file.filename}"
+
         with open(file_path, "wb") as f:
             f.write(contents)
 
-        # Process the document (assuming doc_processor is defined elsewhere)
-        from .document_processor import doc_processor #Import here to avoid circular import
+        from .document_processor import doc_processor
         chunks = doc_processor.process_pdf(file_path)
+
         if not chunks:
+            logger.warning("No text content found in uploaded PDF")
             raise HTTPException(status_code=400, detail="No text content found in PDF")
 
-        # Create vector store
         success = doc_processor.create_vector_store()
         if not success:
+            logger.error("Failed to create vector store")
             raise HTTPException(status_code=500, detail="Failed to create vector store")
 
-        # Clean up
-        os.remove(file_path)
-        logger.info(f"Document processed successfully. Generated {len(chunks)} chunks.")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        logger.info(f"Document processed successfully: {len(chunks)} chunks")
         return {"message": "Document processed successfully", "chunks": len(chunks)}
 
     except Exception as e:
-        logger.error(f"Error processing document: {str(e)}", exc_info=True)
+        logger.error(f"Error processing document: {str(e)}")
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/messages", response_model=List[Message])
-async def create_message(message: MessageCreate):
-    global message_id_counter
-    try:
-        user_message = Message(
-            id=message_id_counter,
-            timestamp=datetime.utcnow(),
-            **message.dict()
-        )
-        message_id_counter += 1
-        messages.append(user_message)
-        response_messages = [user_message]
-
-        if message.role == "user":
-            try:
-                # Get relevant document chunks with similarity scores (assuming doc_processor is defined elsewhere)
-                from .document_processor import doc_processor #Import here to avoid circular import
-                chunk_results = doc_processor.get_relevant_chunks(
-                    message.content,
-                    k=3,
-                    similarity_threshold=0.6  # Adjust threshold as needed
-                )
-
-                if chunk_results:
-                    logger.info(f"Found {len(chunk_results)} relevant chunks")
-                    # Format context with chunks and their similarity scores
-                    context_parts = []
-                    for i, (chunk, score) in enumerate(chunk_results):
-                        context_parts.append(f"[Relevance: {score:.2f}]\n{chunk}")
-                    context = "\n\n".join(context_parts)
-
-                    prompt = f"""Using the following relevant sections from uploaded documents, answer the question.
-Each section includes a relevance score (0-1) indicating how closely it matches the query.
-
-Relevant Sections:
-{context}
-
-Question: {message.content}
-
-Instructions:
-1. If the sections contain a direct answer to the question, ONLY use that information - do not add any additional details.
-2. Start your response with "Based on the provided documents: " if using the context.
-3. If the sections don't contain a direct answer, say "The provided documents don't contain a direct answer to this question."
-4. DO NOT combine context information with general knowledge.
-5. Keep your response focused and concise.
-"""
-                else:
-                    logger.info("No sufficiently relevant chunks found, using general prompt")
-                    prompt = f"""Answer the following question. Keep your response focused and concise.
-
-Question: {message.content}
-
-Note: No relevant context was found in the uploaded documents for this question."""
-
-                from .huggingface import chat #Import here to avoid circular import
-                ai_response = await chat(prompt)
-                ai_message = Message(
-                    id=message_id_counter,
-                    role="assistant",
-                    content=ai_response["content"],
-                    code_blocks=ai_response["code_blocks"],
-                    timestamp=datetime.utcnow()
-                )
-                message_id_counter += 1
-                messages.append(ai_message)
-                response_messages.append(ai_message)
-
-            except Exception as e:
-                logger.error(f"AI Response Error: {str(e)}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to get AI response: {str(e)}"
-                )
-
-        return response_messages
-
-    except Exception as e:
-        logger.error(f"Message Creation Error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to create message: {str(e)}"
-        )
-
-@app.delete("/api/messages")
-async def clear_messages():
-    global messages, message_id_counter
-    messages = []
-    message_id_counter = 1
-    return {"status": "success"}
-
-
-# Import and register routes after the app is configured
-from .routes import register_routes
-register_routes(app)
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 5000))
+    logger.info(f"Starting server on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
