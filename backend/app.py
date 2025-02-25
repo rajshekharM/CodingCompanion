@@ -46,7 +46,17 @@ message_id_counter = 1
 async def root():
     """Root endpoint"""
     logger.info("Root endpoint called")
-    return {"message": "API is running"}
+    return {
+        "message": "Welcome to Python & DSA Assistant API",
+        "status": "online",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/api/health",
+            "messages": "/api/messages",
+            "documentation": "/docs"  # FastAPI auto-generates Swagger docs
+        },
+        "description": "An AI-powered assistant for Python and Data Structures & Algorithms interview preparation"
+    }
 
 @app.get("/api/health")
 async def health_check():

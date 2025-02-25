@@ -7,6 +7,9 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Get the API URL from environment variables
+const API_URL = import.meta.env.VITE_PUBLIC_API_URL || '';
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -16,7 +19,10 @@ export async function apiRequest(
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
   try {
-    const res = await fetch(url, {
+    // Ensure URL starts with API_URL
+    const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+
+    const res = await fetch(fullUrl, {
       method,
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
@@ -37,7 +43,11 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey, signal }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const fullUrl = (queryKey[0] as string).startsWith('http') 
+      ? queryKey[0] as string 
+      : `${API_URL}${queryKey[0]}`;
+
+    const res = await fetch(fullUrl, {
       credentials: "include",
       signal,
     });
