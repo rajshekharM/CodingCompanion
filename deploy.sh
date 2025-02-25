@@ -19,5 +19,5 @@ tar -czf backend.tar.gz ./*
 echo "Deployment completed!"
 echo "Note: Upload backend.tar.gz to Render manually through the dashboard"
 echo "Important: Set up the following environment variables in your deployment platforms:"
-echo "- Frontend (Vercel): NEXT_PUBLIC_API_URL, HUGGINGFACE_API_KEY"
-echo "- Backend (Render): HUGGINGFACE_API_KEY"
+echo "- Frontend (Vercel): NEXT_PUBLIC_API_URL, HUGGINGFACE_API_KEY, OPENAI_API_KEY"
+echo "- Backend (Render): HUGGINGFACE_API_KEY, OPENAI_API_KEY"
