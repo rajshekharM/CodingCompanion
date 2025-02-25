@@ -7,40 +7,25 @@ export interface TextareaProps
 }
 
 const Textarea = React.memo(React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, onChange, debounceMs = 150, ...props }, ref) => { // Increased default debounce
-    const [value, setValue] = React.useState(props.value || '');
+  ({ className, onChange, debounceMs = 50, ...props }, ref) => { 
     const timeoutRef = React.useRef<NodeJS.Timeout>();
-    const previousValueRef = React.useRef(value);
-
-    // Memoize the setValue function
-    const setValueOptimized = React.useCallback((newValue: string) => {
-      if (newValue !== previousValueRef.current) {
-        setValue(newValue);
-        previousValueRef.current = newValue;
-      }
-    }, []);
 
     const handleChange = React.useCallback(
       (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = event.target.value;
-        setValueOptimized(newValue);
-
         if (onChange) {
           if (debounceMs > 0) {
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);
             }
             timeoutRef.current = setTimeout(() => {
-              if (newValue !== previousValueRef.current) {
-                onChange(event);
-              }
+              onChange(event);
             }, debounceMs);
           } else {
             onChange(event);
           }
         }
       },
-      [onChange, debounceMs, setValueOptimized]
+      [onChange, debounceMs]
     );
 
     // Cleanup effect
@@ -52,13 +37,6 @@ const Textarea = React.memo(React.forwardRef<HTMLTextAreaElement, TextareaProps>
       };
     }, []);
 
-    // Update internal value when prop changes
-    React.useEffect(() => {
-      if (props.value !== undefined && props.value !== previousValueRef.current) {
-        setValueOptimized(props.value as string);
-      }
-    }, [props.value, setValueOptimized]);
-
     return (
       <textarea
         className={cn(
@@ -66,7 +44,6 @@ const Textarea = React.memo(React.forwardRef<HTMLTextAreaElement, TextareaProps>
           className
         )}
         ref={ref}
-        value={value}
         onChange={handleChange}
         {...props}
       />
