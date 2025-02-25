@@ -1,12 +1,45 @@
 import * as React from "react"
-
 import { cn } from "@/lib/utils"
 
 export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  debounceMs?: number;
+}
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, onChange, debounceMs = 0, ...props }, ref) => {
+    const [value, setValue] = React.useState(props.value || '');
+    const timeoutRef = React.useRef<NodeJS.Timeout>();
+
+    const handleChange = React.useCallback(
+      (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = event.target.value;
+        setValue(newValue);
+
+        if (onChange) {
+          if (debounceMs > 0) {
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+            }
+            timeoutRef.current = setTimeout(() => {
+              onChange(event);
+            }, debounceMs);
+          } else {
+            onChange(event);
+          }
+        }
+      },
+      [onChange, debounceMs]
+    );
+
+    React.useEffect(() => {
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }, []);
+
     return (
       <textarea
         className={cn(
@@ -14,6 +47,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           className
         )}
         ref={ref}
+        value={value}
+        onChange={handleChange}
         {...props}
       />
     )
