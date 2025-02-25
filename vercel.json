@@ -1,22 +1,16 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "cd client && npm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "cd client && npm install",
+  "framework": "vite",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/next"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "env": {
     "VITE_PUBLIC_API_URL": "@vite_public_api_url"
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
-  "github": {
-    "silent": true,
-    "autoAlias": true
   }
 }

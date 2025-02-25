@@ -10,6 +10,10 @@ async function throwIfResNotOk(res: Response) {
 // Get the API URL from environment variables
 const API_URL = import.meta.env.VITE_PUBLIC_API_URL || '';
 
+if (!API_URL) {
+  console.warn('VITE_PUBLIC_API_URL environment variable is not set. Please configure it in Vercel with your Render backend URL.');
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -42,23 +46,23 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey, signal }) => {
-    const fullUrl = (queryKey[0] as string).startsWith('http') 
-      ? queryKey[0] as string 
-      : `${API_URL}${queryKey[0]}`;
+    async ({ queryKey, signal }) => {
+      const fullUrl = (queryKey[0] as string).startsWith('http')
+        ? queryKey[0] as string
+        : `${API_URL}${queryKey[0]}`;
 
-    const res = await fetch(fullUrl, {
-      credentials: "include",
-      signal,
-    });
+      const res = await fetch(fullUrl, {
+        credentials: "include",
+        signal,
+      });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
 
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
+      await throwIfResNotOk(res);
+      return await res.json();
+    };
 
 export const queryClient = new QueryClient({
   defaultOptions: {
