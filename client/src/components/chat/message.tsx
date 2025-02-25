@@ -33,7 +33,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     return parts.map((part, index) => {
       if (part.startsWith('`') && part.endsWith('`')) {
         return (
-          <code key={index} className="px-1.5 py-0.5 rounded-md bg-zinc-800/80 font-mono text-sm text-emerald-300 transition-colors">
+          <code key={index} className="px-1.5 py-0.5 rounded-md bg-zinc-800/80 font-mono text-sm text-emerald-300">
             {part.slice(1, -1)}
           </code>
         );
@@ -43,19 +43,29 @@ export function ChatMessage({ message }: ChatMessageProps) {
       const formattedText = part
         .split('\n')
         .map((line, i) => {
-          const highlighted = line
+          // Clean up any HTML-like artifacts
+          const cleanLine = line.replace(/\d+">|"text-[^"]+"|>[^<]+</g, '');
+
+          // Apply syntax highlighting classes
+          const highlighted = cleanLine
             .replace(/(import|from|def|class|return|if|else|for|while)\b/g, 
-              '<span class="text-violet-400">$1</span>')
+              '<keyword>$1</keyword>')
             .replace(/(".*?"|'.*?')/g, 
-              '<span class="text-amber-300">$1</span>')
+              '<string>$1</string>')
             .replace(/\b(\d+)\b/g, 
-              '<span class="text-cyan-300">$1</span>');
+              '<number>$1</number>');
 
           return (
             <span key={i} className="block leading-7 tracking-wide">
-              <span 
+              <span
                 className="font-[450] antialiased"
-                dangerouslySetInnerHTML={{ __html: highlighted }} 
+                dangerouslySetInnerHTML={{
+                  __html: highlighted
+                    .replace(/<keyword>/g, '<span class="text-violet-400">')
+                    .replace(/<string>/g, '<span class="text-amber-300">')
+                    .replace(/<number>/g, '<span class="text-cyan-300">')
+                    .replace(/<\/(keyword|string|number)>/g, '</span>')
+                }}
               />
             </span>
           );
