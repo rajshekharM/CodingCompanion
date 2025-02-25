@@ -6,15 +6,24 @@ export interface TextareaProps
   debounceMs?: number;
 }
 
-const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, onChange, debounceMs = 0, ...props }, ref) => {
+const Textarea = React.memo(React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ className, onChange, debounceMs = 150, ...props }, ref) => { // Increased default debounce
     const [value, setValue] = React.useState(props.value || '');
     const timeoutRef = React.useRef<NodeJS.Timeout>();
+    const previousValueRef = React.useRef(value);
+
+    // Memoize the setValue function
+    const setValueOptimized = React.useCallback((newValue: string) => {
+      if (newValue !== previousValueRef.current) {
+        setValue(newValue);
+        previousValueRef.current = newValue;
+      }
+    }, []);
 
     const handleChange = React.useCallback(
       (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newValue = event.target.value;
-        setValue(newValue);
+        setValueOptimized(newValue);
 
         if (onChange) {
           if (debounceMs > 0) {
@@ -22,16 +31,19 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               clearTimeout(timeoutRef.current);
             }
             timeoutRef.current = setTimeout(() => {
-              onChange(event);
+              if (newValue !== previousValueRef.current) {
+                onChange(event);
+              }
             }, debounceMs);
           } else {
             onChange(event);
           }
         }
       },
-      [onChange, debounceMs]
+      [onChange, debounceMs, setValueOptimized]
     );
 
+    // Cleanup effect
     React.useEffect(() => {
       return () => {
         if (timeoutRef.current) {
@@ -39,6 +51,13 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         }
       };
     }, []);
+
+    // Update internal value when prop changes
+    React.useEffect(() => {
+      if (props.value !== undefined && props.value !== previousValueRef.current) {
+        setValueOptimized(props.value as string);
+      }
+    }, [props.value, setValueOptimized]);
 
     return (
       <textarea
@@ -53,7 +72,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       />
     )
   }
-)
+))
+
 Textarea.displayName = "Textarea"
 
 export { Textarea }
