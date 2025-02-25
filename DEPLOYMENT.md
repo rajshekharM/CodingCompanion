@@ -5,111 +5,115 @@
    - Render (backend deployment)
    - Vercel (frontend deployment)
 2. Install Vercel CLI: `npm i -g vercel`
+3. Ensure your code is pushed to GitHub
 
-## Step 1: Backend Deployment (Render)
+## Continuous Integration Setup
 
+### 1. Replit-GitHub Integration
+1. In Replit:
+   - Click on "Version Control" in the left sidebar
+   - Click "Connect to GitHub"
+   - Select your repository
+   - Authorize Replit
+2. Configure auto-sync:
+   - Changes in Replit automatically commit to GitHub
+   - Deployments trigger automatically
+
+### 2. GitHub-Render Integration (Backend)
 1. Go to [Render Dashboard](https://dashboard.render.com)
 2. Click "New Web Service"
-3. Connect your GitHub repository or upload `backend.tar.gz`
-4. Configure the service:
+3. Choose "Connect your GitHub repository"
+4. Select your repository
+5. Configure the service:
    ```
    Name: python-dsa-assistant-backend
    Environment: Python 3
    Build Command: pip install -r backend/requirements.txt
    Start Command: cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT --workers 4 --limit-concurrency 1000
    ```
-5. Set environment variables:
+6. Set environment variables:
    - `HUGGINGFACE_API_KEY`
    - `OPENAI_API_KEY`
    - `PORT=5000`
+7. Enable "Auto-Deploy" in settings
 
-6. Deploy and wait for build completion
-7. Copy your backend URL (e.g., https://your-app.onrender.com)
-8. Test backend: Visit https://your-app.onrender.com/api/health
-
-## Step 2: Frontend Deployment (Vercel)
-
-1. Commit all changes to GitHub
-2. Go to [Vercel Dashboard](https://vercel.com)
-3. Click "Import Project"
-4. Select your GitHub repository
-5. Configure build settings:
+### 3. GitHub-Vercel Integration (Frontend)
+1. Go to [Vercel Dashboard](https://vercel.com)
+2. Click "Import Project"
+3. Select your GitHub repository
+4. Configure build settings:
    ```
    Framework Preset: Next.js
    Root Directory: ./
    Build Command: npm run build
    Install Command: npm install
    ```
-6. Add environment variables:
+5. Add environment variables:
    - `NEXT_PUBLIC_API_URL` (your Render backend URL)
    - `HUGGINGFACE_API_KEY`
    - `OPENAI_API_KEY`
+6. Enable "Auto-Deploy" in project settings
 
-7. Deploy and wait for build completion
+## Development Workflow
 
-## Step 3: Verify Deployment
+1. Make changes in Replit
+2. Test changes locally
+3. Commit in Replit's Version Control
+4. Changes automatically:
+   - Push to GitHub
+   - Deploy to Vercel (frontend)
+   - Deploy to Render (backend)
 
-1. Backend Health Check:
-   - Visit: `https://your-app.onrender.com/api/health`
-   - Should see: `{"status": "healthy", "timestamp": "...", "version": "1.0.0"}`
+## Verification Steps
 
-2. Frontend Check:
-   - Visit your Vercel deployment URL
-   - Try the chat functionality
-   - Test file upload feature
+### 1. Backend Health Check
+- Visit: `https://your-app.onrender.com/api/health`
+- Should see: `{"status": "healthy", "timestamp": "...", "version": "1.0.0"}`
+
+### 2. Frontend Check
+- Visit your Vercel deployment URL
+- Try the chat functionality
+- Test file upload feature
 
 ## Troubleshooting
 
-### Backend Issues:
+### GitHub Integration Issues
+- Verify Replit has correct GitHub permissions
+- Check GitHub repository settings
+- Ensure branch protection rules don't block auto-sync
+
+### Backend Issues
 - Check Render logs for Python errors
 - Verify environment variables are set
 - Ensure backend URL is correct in frontend config
 
-### Frontend Issues:
+### Frontend Issues
 - Check Vercel build logs
 - Verify API URL is correct
 - Check browser console for errors
 
 ## Monitoring
 
-- Backend: Render Dashboard → Logs  (See also Render's metrics dashboard)
-- Frontend: Vercel Dashboard → Analytics (Monitor page views, load times, and track API route performance)
+- Backend: Render Dashboard → Logs (See also Render's metrics dashboard)
+- Frontend: Vercel Dashboard → Analytics
+- GitHub: Repository Actions tab
 - API Health: /api/health endpoint
-
 
 ## Free Tier Limits
 
-### Render Free Tier:
+### Render Free Tier
 - 750 hours/month runtime
 - 100 GB/month bandwidth
 - Automatic HTTPS
 - Build minutes: 400/month
+- Automatic deployments from GitHub
 
-### Vercel Free Tier:
+### Vercel Free Tier
 - Unlimited personal projects
 - Automatic HTTPS
 - Global CDN
 - Basic analytics
-
-
-## Scaling Options (for future reference)
-
-### Frontend Scaling (Vercel)
-1. Edge Network: Configure regions and function memory/duration in `vercel.json` as shown in the original document.
-2. Caching Strategies: Implement ISR, stale-while-revalidate, and React Query caching.
-3. Performance Optimizations: Enable image optimization, use dynamic imports, implement code splitting, and enable compression.
-
-### Backend Scaling (Render)
-1. Horizontal Scaling: Scale to multiple instances using Render's auto-scaling based on CPU/Memory usage and configure a load balancer.
-2. Memory and CPU: Adjust CPU (1-4 vCPUs) and Memory (512MB-8GB) and Concurrent connections (up to 1000) in the Render Dashboard.
-3. Caching Layer: Consider adding Redis caching using `fastapi-cache`.  (See original document for code example).
-4. Rate Limiting: Implement rate limiting using FastAPI's `ThrottlingMiddleware`. (See original document for code example).
-
-
-### Database Scaling
-1. Connection Pooling: Use `databases` library with connection pooling (`min_size`, `max_size`). (See original document for code example).
-2. Query Optimization: Index frequently accessed fields, implement pagination, and use efficient queries.
-
+- Automatic deployments from GitHub
 
 ## Environment Setup
 Create a `.env` file for local development:
@@ -118,12 +122,10 @@ HUGGINGFACE_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ```
 
-## Deployment Commands
+## Making Changes
 
-```bash
-# Frontend (Vercel)
-cd frontend
-vercel deploy # Or connect your GitHub repo
-
-# Backend (Render)
-# Connect your GitHub repo; Render handles the rest
+1. Make changes to your local code in Replit
+2. Test changes using the dev server
+3. Commit changes in Replit's Version Control
+4. Automatic deployment will trigger on both platforms
+5. Monitor deployment progress in respective dashboards

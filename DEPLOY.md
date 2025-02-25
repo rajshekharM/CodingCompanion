@@ -39,13 +39,20 @@ OPENAI_API_KEY=your_openai_api_key
 
 1. Go to [Render Dashboard](https://dashboard.render.com)
 2. Click "New Web Service"
-3. Connect your GitHub repository
-4. Configure the service:
+3. Choose "Connect your GitHub repository"
+4. Select your repository
+5. Configure the service:
    - Name: python-dsa-assistant-backend
    - Environment: Python 3
    - Build Command: `pip install -r backend/requirements.txt`
    - Start Command: `cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT --workers 4 --limit-concurrency 1000`
    - Add environment variables in Render Dashboard
+
+Benefits of GitHub Integration:
+- Automatic deployments when you push changes
+- Version control and rollback capabilities
+- Better collaboration workflow
+- Deploy preview environments for pull requests
 
 ## 3. Post-Deployment Verification
 

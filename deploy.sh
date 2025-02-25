@@ -1,23 +1,12 @@
-#!/bin/bash
+# This file has been deprecated as we now use GitHub integration for deployment.
+# Please refer to DEPLOYMENT.md for the current deployment instructions.
 
-echo "Deploying Python & DSA Assistant..."
+# For Backend (Render):
+# 1. Connect your GitHub repository
+# 2. Configure environment variables (HUGGINGFACE_API_KEY, OPENAI_API_KEY)
+# 3. Deploy
 
-# Frontend deployment
-echo "Step 1: Building and deploying frontend..."
-cd frontend
-npm run build
-vercel deploy --prod
-
-# Backend deployment
-echo "Step 2: Deploying backend to Render..."
-cd ../backend
-
-# Create a tar archive of the backend
-echo "Creating backend archive..."
-tar -czf backend.tar.gz ./*
-
-echo "Deployment completed!"
-echo "Note: Upload backend.tar.gz to Render manually through the dashboard"
-echo "Important: Set up the following environment variables in your deployment platforms:"
-echo "- Frontend (Vercel): NEXT_PUBLIC_API_URL, HUGGINGFACE_API_KEY, OPENAI_API_KEY"
-echo "- Backend (Render): HUGGINGFACE_API_KEY, OPENAI_API_KEY"
+# For Frontend (Vercel):
+# 1. Connect your GitHub repository
+# 2. Configure environment variables (NEXT_PUBLIC_API_URL, HUGGINGFACE_API_KEY, OPENAI_API_KEY)
+# 3. Deploy

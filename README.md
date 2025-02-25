@@ -57,6 +57,46 @@ A high-performance AI-powered coding assistant for Python and Data Structures & 
   - DSA concept clarification
   - Time/space complexity analysis
 
+## Continuous Integration/Deployment Pipeline
+
+### 1. Development (Replit)
+- All development happens in Replit
+- Code changes are automatically committed
+- Commits trigger GitHub sync
+
+### 2. Version Control (GitHub)
+- Acts as the central repository
+- Maintains version history
+- Triggers deployment pipelines
+
+### 3. Frontend Deployment (Vercel)
+- Automatic deployments on push
+- Environment variables managed in Vercel dashboard
+- Global CDN distribution
+- Automatic HTTPS
+
+### 4. Backend Deployment (Render)
+- Automatic deployments from GitHub
+- Environment variables in Render dashboard
+- Horizontal scaling capabilities
+- Automatic HTTPS
+
+### 5. Monitoring
+- Vercel Analytics for frontend
+- Render Dashboard for backend
+- Health check endpoints
+- Error tracking and logging
+
+## Development Workflow
+
+1. Make changes in Replit
+2. Test locally using `npm run dev`
+3. Commit changes in Replit
+4. Changes automatically sync to GitHub
+5. Deployments trigger automatically:
+   - Frontend deploys to Vercel
+   - Backend deploys to Render
+
 ## Key Features
 1. **Interactive Chat Interface**
    - Real-time code generation
