@@ -2,41 +2,10 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  debounceMs?: number;
-}
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
-const Textarea = React.memo(React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, onChange, debounceMs = 50, ...props }, ref) => { 
-    const timeoutRef = React.useRef<NodeJS.Timeout>();
-
-    const handleChange = React.useCallback(
-      (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-        if (onChange) {
-          if (debounceMs > 0) {
-            if (timeoutRef.current) {
-              clearTimeout(timeoutRef.current);
-            }
-            timeoutRef.current = setTimeout(() => {
-              onChange(event);
-            }, debounceMs);
-          } else {
-            onChange(event);
-          }
-        }
-      },
-      [onChange, debounceMs]
-    );
-
-    // Cleanup effect
-    React.useEffect(() => {
-      return () => {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-      };
-    }, []);
-
+const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ className, ...props }, ref) => {
     return (
       <textarea
         className={cn(
@@ -44,12 +13,11 @@ const Textarea = React.memo(React.forwardRef<HTMLTextAreaElement, TextareaProps>
           className
         )}
         ref={ref}
-        onChange={handleChange}
         {...props}
       />
     )
   }
-))
+)
 
 Textarea.displayName = "Textarea"
 
