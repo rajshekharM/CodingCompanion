@@ -214,7 +214,16 @@ async def clear_messages():
     message_id_counter = 1
     return {"status": "success"}
 
-# Add health check endpoint
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow()}
+    """Health check endpoint to verify API is running"""
+    try:
+        # Add basic health checks here
+        return {
+            "status": "healthy",
+            "timestamp": str(datetime.utcnow()),
+            "version": "1.0.0"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Health check failed")
