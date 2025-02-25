@@ -4,9 +4,9 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: './',
   build: {
     outDir: 'dist',
+    sourcemap: true,
     assetsDir: 'assets',
   },
   resolve: {
@@ -14,5 +14,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@shared': path.resolve(__dirname, '../shared'),
     },
+  },
+  server: {
+    port: 3000,
+    host: true,
   },
 });
