@@ -3,7 +3,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import debounce from "lodash/debounce";
 
 interface ChatInputProps {
   onSubmit: (content: string) => void;
@@ -14,19 +13,13 @@ export function ChatInput({ onSubmit, isLoading }: ChatInputProps) {
   const [input, setInput] = useState("");
   const queryClient = useQueryClient();
 
-  // Debounce the input change to reduce unnecessary state updates
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSetInput = useCallback(
-    debounce((value: string) => setInput(value), 100),
-    []
-  );
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
       onSubmit(input.trim());
       setInput("");
-      // Optimistically update the UI
+
+      // Move optimistic update to after submission only
       queryClient.setQueryData(["/api/messages"], (old: any) => {
         if (!Array.isArray(old)) return old;
         return [
@@ -54,7 +47,7 @@ export function ChatInput({ onSubmit, isLoading }: ChatInputProps) {
     <form onSubmit={handleSubmit} className="flex gap-3">
       <Textarea
         value={input}
-        onChange={(e) => debouncedSetInput(e.target.value)}
+        onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Ask about Python, ML, Data Science, or Deep Learning..."
         className="min-h-[60px] resize-none flex-1 shadow-sm focus-visible:ring-primary bg-zinc-800/50 border-zinc-700/50 placeholder:text-zinc-500 font-[450] tracking-wide"
